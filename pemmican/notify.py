@@ -4,21 +4,25 @@ import dbus
 class Notifications:
     """
     Wraps the methods of the DBus Notifications freedesktop service. If *bus*
-    is not specified, it defaults to the DBus :class:`~dbus.SessionBus`.
+    is not specified, it defaults to the DBus :class:`~dbus.SessionBus`. As
+    the instance needs to receive signals, the bus must be associated with a
+    "main loop", e.g. :class:`DBusGMainLoop`.
     """
+    SERVICE_NAME = 'org.freedesktop.Notifications'
+    OBJECT_PATH = '/org/freedesktop/Notifications'
+
     def __init__(self, bus=None):
         if bus is None:
             bus = dbus.SessionBus()
-        service = 'org.freedesktop.Notifications'
-        server = bus.get_object(service, '/org/freedesktop/Notifications')
-        self._intf = dbus.Interface(server, dbus_interface=service)
+        server = bus.get_object(self.SERVICE_NAME, self.OBJECT_PATH)
+        self._intf = dbus.Interface(server, dbus_interface=self.SERVICE_NAME)
         self._pending = set()
         self.on_closed = None
         self.on_action = None
         bus.add_signal_receiver(
-            self._notification_closed, 'NotificationClosed', service)
+            self._notification_closed, 'NotificationClosed', self.SERVICE_NAME)
         bus.add_signal_receiver(
-            self._action_invoked, 'ActionInvoked', service)
+            self._action_invoked, 'ActionInvoked', self.SERVICE_NAME)
 
     def get_server_info(self):
         """
@@ -99,12 +103,33 @@ class Notifications:
         """
         self._intf.CloseNotification(msg_id)
 
-    def _action_invoked(self, msg_id, action_key):
+    @property
+    def pending(self):
+        """
+        Returns the set of pending message identifiers, as returned by
+        :meth:`notify`.
+        """
+        return frozenset(self._pending)
+
+    def _action_invoked(self, msg_id, action_id):
+        """
+        If *msg_id* is a message we sent, call :attr:`on_action` with the
+        identifier, and the *action_id* (one of the ids passed as the *actions*
+        parameter to :meth:`notify`) that was invoked by the user.
+        """
         if msg_id in self._pending:
             if callable(self.on_action):
-                self.on_action(msg_id, action_key)
+                self.on_action(msg_id, action_id)
 
     def _notification_closed(self, msg_id, reason):
+        """
+        If *msg_id* is a message we sent, call :attr:`on_closed` with the
+        identifier and the *reason* for closing. See the `Desktop Notifications
+        Specification`_ for valid reason codes.
+
+        .. _Desktop Notifications Specification:
+            https://specifications.freedesktop.org/notification-spec/latest/
+        """
         try:
             self._pending.remove(msg_id)
         except KeyError:
