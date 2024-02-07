@@ -1,0 +1,30 @@
+# Python stuff
+*.py[cdo]
+
+# Vim stuff
+*.vim
+*.swp
+
+# Translations
+*.mo
+
+# Miscellaneous
+tags
+
+# Packages
+*.egg
+*.egg-info
+*.pyc
+*.whl
+dist
+build
+man
+
+# Unit test / coverage reports
+coverage
+.cache
+.coverage
+.tox
+.pytest_cache
+.env
+.eggs
