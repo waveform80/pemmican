@@ -13,15 +13,11 @@ def reset_brownout():
     :exc:`OSError` if the reset condition cannot be queried (e.g. if this is
     executed on a non-Raspberry Pi).
     """
-    # NOTE: Seems this node has different names on RaspiOS and Ubuntu (or
-    # changed name between kernel versions?)
-    # TODO: Find out which of these is "The One True Name" going forward and
-    # make sure it's in the try branch
-    try:
-        buf = (DT_POWER / 'reset_event').read_bytes()
-    except FileNotFoundError:
-        buf = (DT_POWER / 'power_reset').read_bytes()
-    return bool(struct.unpack('>I', buf)[0] & 0x02)
+    # D-T values are big-endian (hence the > prefix)
+    fmt = struct.Struct('>I')
+    with (DT_POWER / 'power_reset').open('rb') as f:
+        value, = fmt.unpack(f.read(fmt.size))
+        return bool(value & 0x02)
 
 
 def psu_max_current():
@@ -31,4 +27,7 @@ def psu_max_current():
     5A), but may be 3000 or lower. Raises :exc:`OSError` if the maximum current
     could not be queried (e.g. if this is executed on a non-Raspberry Pi).
     """
-    return struct.unpack('>I', (DT_POWER / 'max_current').read_bytes())[0]
+    fmt = struct.Struct('>I')
+    with (DT_POWER / 'max_current').open('rb') as f:
+        value, = fmt.unpack(f.read(fmt.size))
+        return value
