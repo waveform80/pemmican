@@ -1,0 +1,17 @@
+[Unit]
+Description=Check the Raspberry Pi PMIC for reset notifications
+ConditionPathExists=/proc/device-tree/chosen/power
+ConditionPathExists=|!%E/pemmican/brownout_warning.inhibit
+ConditionPathExists=|!%E/pemmican/max_current_warning.inhibit
+Requires=dbus.socket
+After=dbus.socket
+
+[Service]
+Slice=session.slice
+Type=oneshot
+ExecStart=pemmican-reset
+Restart=on-failure
+RestartSec=1s
+
+[Install]
+WantedBy=graphical-session.target
