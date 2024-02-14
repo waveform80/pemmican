@@ -6,6 +6,7 @@ import gettext
 import webbrowser
 from pathlib import Path
 from importlib import resources
+from time import monotonic, sleep
 
 import gi
 gi.require_version('Gio', '2.0')
@@ -45,9 +46,17 @@ class NotifierApplication:
         self.app = None
         self.main_loop = None
         self.notifier = None
-        self._run_id = None
+        self._run_start = None
 
     def __call__(self, args=None):
+        # Bail if we don't have DISPLAY or WAYLAND_DISPLAY set in the
+        # environment (which are required to launch the browser on "more
+        # information"); the service will retry us later (when hopefully
+        # they've shown up...)
+        if not os.environ.keys() & {'DISPLAY', 'WAYLAND_DISPLAY'}:
+            print('Missing DISPLAY / WAYLAND_DISPLAY',
+                  file=sys.stderr, flush=True)
+            return 1
         # Integrate dbus-python with GLib; the set_as_default parameter means
         # we don't have to pass around the NativeMainLoop object this returns
         # whenever connecting to a bus -- it'll be the default anyway
@@ -68,18 +77,35 @@ class NotifierApplication:
 
     def do_activate(self, user_data):
         self.main_loop = GLib.MainLoop()
-        self._run_id = GLib.idle_add(self._call_run)
+        GLib.idle_add(self._call_run)
+        self._run_start = monotonic()
         self.main_loop.run()
 
     def _call_run(self):
-        # This is a one-shot method; we want to run once, and once only
-        if self._run_id is not None:
-            GLib.source_remove(self._run_id)
-            self._run_id = None
-            self.run()
+        try:
+            self.notifier = Notifications()
+        except DBusException as err:
+            if err.get_dbus_name() in (
+                'org.freedesktop.DBus.Error.NameHasNoOwner',
+                'org.freedesktop.DBus.Error.ServiceUnknown',
+            ):
+                if monotonic - self._run_start > 60:
+                    # We've waited a full minute for the notification service
+                    # to show up; bail with the exception
+                    raise
+                else:
+                    # Wait a while and re-run the idle handler (True return
+                    # indicates re-run requested)
+                    sleep(1)
+                    return True
+            else:
+                raise
+        self._run_id = None
+        self.run()
+        return False
 
     def run(self):
-        self.notifier = Notifications()
+        raise NotImplementedError()
 
 
 class ResetApplication(NotifierApplication):
@@ -93,7 +119,6 @@ class ResetApplication(NotifierApplication):
         self.inhibit = None
 
     def run(self):
-        super().run()
         self.notifier.on_closed = self.do_notification_closed
         self.notifier.on_action = self.do_notification_action
         self.do_check()
@@ -173,8 +198,8 @@ class ResetApplication(NotifierApplication):
 class MonitorApplication(NotifierApplication):
     APP_ID = 'com.canonical.pemmican.MonitorGui'
     RPI_PSU_URL = 'https://rptl.io/rpi5-power-supply-info'
-    UNDERVOLT_INHIBIT = 'undervolt.inhibit'
-    OVERCURRENT_INHIBIT = 'overcurrent.inhibit'
+    UNDERVOLT_INHIBIT = 'undervolt_warning.inhibit'
+    OVERCURRENT_INHIBIT = 'overcurrent_warning.inhibit'
 
     def __init__(self):
         super().__init__()
@@ -187,7 +212,6 @@ class MonitorApplication(NotifierApplication):
         self.undervolt_msg_id = 0
 
     def run(self):
-        super().run()
         check_undervolt = not any(
             (p / __package__ / self.UNDERVOLT_INHIBIT).exists()
             for p in XDG_CONFIG_DIRS)
