@@ -93,7 +93,7 @@ develop:
 	$(PIP) install -U pip
 	$(PIP) install -U twine
 	$(PIP) install -U tox
-	$(PIP) install -e .[doc,test]
+	$(PIP) install -e .[gui,doc,test]
 	@# If we're in a venv, link the system's GObject Introspection (gi) into it
 ifeq ($(VIRTUAL_ENV),)
 	@echo "Virtualenv not detected! You may need to link gi manually"
