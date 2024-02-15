@@ -56,6 +56,7 @@ def main(args=None):
             print(fill(
                 _('See man:pemmican-cli(1) for information on suppressing '
                   'this warning, or {RPI_PSU_URL} for more information on the '
-                  'Raspberry Pi 5 power supply')))
+                  'Raspberry Pi 5 power supply'.format(RPI_PSU_URL=RPI_PSU_URL)
+                 )))
 
         return 0

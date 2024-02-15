@@ -166,7 +166,7 @@ class ResetApplication(NotifierApplication):
         else:
             actions = []
             suffix = escape(_('See {RPI_PSU_URL} for more information')
-                            .format(self=self))
+                            .format(RPI_PSU_URL=RPI_PSU_URL))
         # Check for brownout initially. If brownout caused a reset, don't
         # bother double-warning about an inadequate PSU
         if brownout:
@@ -281,7 +281,7 @@ class MonitorApplication(NotifierApplication):
         else:
             actions = []
             suffix = escape(_('See {RPI_PSU_URL} for more information')
-                            .format(self=self))
+                            .format(RPI_PSU_URL=RPI_PSU_URL))
 
         return self.notifier.notify(
             self.title, body=escape(msg) + ('. ' + suffix if suffix else ''),
