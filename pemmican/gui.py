@@ -4,7 +4,6 @@ import html
 import locale
 import gettext
 import webbrowser
-from pathlib import Path
 from importlib import resources
 from time import monotonic, sleep
 
@@ -18,6 +17,15 @@ from pyudev.glib import MonitorObserver
 
 from .power import reset_brownout, psu_max_current
 from .notify import Notifications
+from .const import (
+    XDG_CONFIG_DIRS,
+    XDG_CONFIG_HOME,
+    RPI_PSU_URL,
+    BROWNOUT_INHIBIT,
+    MAX_CURRENT_INHIBIT,
+    UNDERVOLT_INHIBIT,
+    OVERCURRENT_INHIBIT,
+)
 
 
 try:
@@ -27,15 +35,6 @@ except locale.Error:
     _ = lambda s: s
 else:
     _ = gettext.gettext
-
-
-XDG_CONFIG_HOME = Path(os.environ.get(
-    'XDG_CONFIG_HOME', os.path.expanduser('~/.config')))
-XDG_CONFIG_DIRS = [
-    Path(p)
-    for p in os.environ.get(
-        'XDG_CONFIG_DIRS', f'{XDG_CONFIG_HOME}:/etc/xdg').split(':')
-]
 
 
 class NotifierApplication:
@@ -110,9 +109,6 @@ class NotifierApplication:
 
 class ResetApplication(NotifierApplication):
     APP_ID = 'com.canonical.pemmican.ResetGui'
-    RPI_PSU_URL = 'https://rptl.io/rpi5-power-supply-info'
-    BROWNOUT_INHIBIT = 'brownout_warning.inhibit'
-    MAX_CURRENT_INHIBIT = 'max_current_warning.inhibit'
 
     def __init__(self):
         super().__init__()
@@ -129,7 +125,7 @@ class ResetApplication(NotifierApplication):
 
     def do_notification_action(self, msg_id, action_key):
         if action_key == 'moreinfo':
-            webbrowser.open_new_tab(self.RPI_PSU_URL)
+            webbrowser.open_new_tab(RPI_PSU_URL)
         else: # action_key == 'suppress'
             inhibit_path = XDG_CONFIG_HOME / __package__ / self.inhibit
             inhibit_path.parent.mkdir(parents=True, exist_ok=True)
@@ -138,10 +134,10 @@ class ResetApplication(NotifierApplication):
     def do_check(self):
         try:
             brownout = reset_brownout() and not any(
-                (p / __package__ / self.BROWNOUT_INHIBIT).exists()
+                (p / __package__ / BROWNOUT_INHIBIT).exists()
                 for p in XDG_CONFIG_DIRS)
             max_current = (psu_max_current() < 5000) and not any(
-                (p / __package__ / self.MAX_CURRENT_INHIBIT).exists()
+                (p / __package__ / MAX_CURRENT_INHIBIT).exists()
                 for p in XDG_CONFIG_DIRS)
         except OSError:
             # We're probably not on a Pi 5; just exit
@@ -164,17 +160,17 @@ class ResetApplication(NotifierApplication):
         elif 'body-hyperlinks' in caps:
             actions = []
             suffix = (
-                f'<a href="{escape(self.RPI_PSU_URL)}">' +
+                f'<a href="{escape(RPI_PSU_URL)}">' +
                 escape(_("More information")) +
                 '</a>')
         else:
             actions = []
-            suffix = escape(_('See {self.RPI_PSU_URL} for more information')
+            suffix = escape(_('See {RPI_PSU_URL} for more information')
                             .format(self=self))
         # Check for brownout initially. If brownout caused a reset, don't
         # bother double-warning about an inadequate PSU
         if brownout:
-            self.inhibit = self.BROWNOUT_INHIBIT
+            self.inhibit = BROWNOUT_INHIBIT
             body=escape(_(
                 'Reset due to low power; please check your power supply')) + (
                 '. ' + suffix if suffix else '')
@@ -182,7 +178,7 @@ class ResetApplication(NotifierApplication):
                 self.title, body=body,
                 hints={'urgency': 2}, actions=actions)
         elif max_current:
-            self.inhibit = self.MAX_CURRENT_INHIBIT
+            self.inhibit = MAX_CURRENT_INHIBIT
             body=escape(_(
                 'This power supply is not capable of supplying 5A; power '
                 'to peripherals will be restricted')) + (
@@ -197,9 +193,6 @@ class ResetApplication(NotifierApplication):
 
 class MonitorApplication(NotifierApplication):
     APP_ID = 'com.canonical.pemmican.MonitorGui'
-    RPI_PSU_URL = 'https://rptl.io/rpi5-power-supply-info'
-    UNDERVOLT_INHIBIT = 'undervolt_warning.inhibit'
-    OVERCURRENT_INHIBIT = 'overcurrent_warning.inhibit'
 
     def __init__(self):
         super().__init__()
@@ -213,10 +206,10 @@ class MonitorApplication(NotifierApplication):
 
     def run(self):
         check_undervolt = not any(
-            (p / __package__ / self.UNDERVOLT_INHIBIT).exists()
+            (p / __package__ / UNDERVOLT_INHIBIT).exists()
             for p in XDG_CONFIG_DIRS)
         check_overcurrent = not any(
-            (p / __package__ / self.OVERCURRENT_INHIBIT).exists()
+            (p / __package__ / OVERCURRENT_INHIBIT).exists()
             for p in XDG_CONFIG_DIRS)
         if not check_undervolt and not check_overcurrent:
             self.main_loop.quit()
@@ -282,12 +275,12 @@ class MonitorApplication(NotifierApplication):
         elif 'body-hyperlinks' in caps:
             actions = []
             suffix = (
-                f'<a href="{escape(self.RPI_PSU_URL)}">' +
+                f'<a href="{escape(RPI_PSU_URL)}">' +
                 escape(_("More information")) +
                 '</a>')
         else:
             actions = []
-            suffix = escape(_('See {self.RPI_PSU_URL} for more information')
+            suffix = escape(_('See {RPI_PSU_URL} for more information')
                             .format(self=self))
 
         return self.notifier.notify(
@@ -302,11 +295,11 @@ class MonitorApplication(NotifierApplication):
 
     def do_notification_action(self, msg_id, action_key):
         if action_key == 'moreinfo':
-            webbrowser.open_new_tab(self.RPI_PSU_URL)
+            webbrowser.open_new_tab(RPI_PSU_URL)
         else:
             inhibit_path = XDG_CONFIG_HOME / __package__ / {
-                'suppress_undervolt': self.UNDERVOLT_INHIBIT,
-                'suppress_overcurrent': self.OVERCURRENT_INHIBIT,
+                'suppress_undervolt': UNDERVOLT_INHIBIT,
+                'suppress_overcurrent': OVERCURRENT_INHIBIT,
             }[action_key]
             inhibit_path.parent.mkdir(parents=True, exist_ok=True)
             inhibit_path.touch()
