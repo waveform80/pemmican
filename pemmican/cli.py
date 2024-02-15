@@ -33,6 +33,11 @@ else:
 
 
 def main(args=None):
+    """
+    The entry-point for the :program:`pemmican-cli` application. Takes the
+    command line *args* as its only parameter and returns the exit code of
+    the application.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         '--version', action='version', version=metadata.version(__package__))

@@ -7,9 +7,9 @@ Contents
     :maxdepth: 1
 
     install
-    tutorial
-    pemmican_reset
-    pemmican_mon
+    pemmican-cli
+    pemmican-reset
+    pemmican-mon
     api
     development
     changelog
