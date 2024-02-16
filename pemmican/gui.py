@@ -1,3 +1,10 @@
+"""
+This module contains the "main" entry points for the :program:`pemmican-reset`
+and :program:`pemmican-mon` applications, :class:`ResetApplication` and
+:class:`MonitorApplication`, respectively. Both are derived from an abstract
+base class, :class:`NotifierApplication` containing the logic common to both.
+"""
+
 import os
 import sys
 import html
@@ -6,6 +13,7 @@ import gettext
 import webbrowser
 from importlib import resources
 from time import monotonic, sleep
+from abc import ABC, abstractmethod
 
 import gi
 gi.require_version('Gio', '2.0')
@@ -37,25 +45,58 @@ else:
     _ = gettext.gettext
 
 
-class NotifierApplication:
+class NotifierApplication(ABC):
+    """
+    Base class for a GLib GApplication which needs to talk to the freedestkop
+    `notification service`_. An instance of this class can be called as a
+    "main" function, optionally passing in the command line parameters.
+
+    As a GApplication with an identifier (see :attr:`APP_ID`), only one
+    instance is typically permitted to run. Additional instances will exit
+    before activation, but will signal the original instance to activate
+    instead. The XDG directories, particularly those related to configuration
+    (:envvar:`XDG_CONFIG_HOME` and :envvar:`XDG_CONFIG_DIRS`) are expected in
+    the environment.
+
+    Furthermore, if *want_display* is :data:`True` (which it is by default),
+    the application will terminate early with a non-zero exit code if
+    :envvar:`DISPLAY` or :envvar:`WAYLAND_DISPLAY` are missing from the
+    environment. Finally, if the freedesktop notification service does not show
+    up within 1 minute of the application starting, the application will also
+    terminate with a non-zero exit code.
+
+    This is an abstract class; descendents need to implement the :meth:`run`
+    method.
+
+    .. attribute:: APP_ID
+
+        The application's identifier, in the typical form of a reverse
+        domain-name. This should be overridden at the class-level in each
+        descendent.
+
+    .. _notification service: https://specifications.freedesktop.org/notification-spec/
+    """
     APP_ID = 'com.canonical.pemmican'
 
-    def __init__(self):
+    def __init__(self, *, want_display=True):
+        super().__init__()
         self.title = ''
         self.app = None
         self.main_loop = None
         self.notifier = None
+        self._want_display = want_display
         self._run_start = None
 
     def __call__(self, args=None):
-        # Bail if we don't have DISPLAY or WAYLAND_DISPLAY set in the
-        # environment (which are required to launch the browser on "more
-        # information"); the service will retry us later (when hopefully
-        # they've shown up...)
-        if not os.environ.keys() & {'DISPLAY', 'WAYLAND_DISPLAY'}:
-            print('Missing DISPLAY / WAYLAND_DISPLAY',
-                  file=sys.stderr, flush=True)
-            return 1
+        if self._want_display:
+            # Bail if we don't have DISPLAY or WAYLAND_DISPLAY set in the
+            # environment (which are required to launch the browser on "more
+            # information"); the service will retry us later (when hopefully
+            # they've shown up...)
+            if not os.environ.keys() & {'DISPLAY', 'WAYLAND_DISPLAY'}:
+                print('Missing DISPLAY / WAYLAND_DISPLAY',
+                      file=sys.stderr, flush=True)
+                return 1
         # Integrate dbus-python with GLib; the set_as_default parameter means
         # we don't have to pass around the NativeMainLoop object this returns
         # whenever connecting to a bus -- it'll be the default anyway
@@ -75,12 +116,27 @@ class NotifierApplication:
             return self.app.run(sys.argv if args is None else args)
 
     def do_activate(self, user_data):
+        """
+        Application activation. This starts the GLib main loop; any set up
+        which should be performed before entering the main loop should be done
+        here.
+
+        The application's main logic (in the abstract :meth:`run` method) is
+        ultimately executed as a one-shot idle handler from the GLib main loop,
+        configured here.
+        """
         self.main_loop = GLib.MainLoop()
         GLib.idle_add(self._call_run)
         self._run_start = monotonic()
         self.main_loop.run()
 
     def _call_run(self):
+        """
+        This method is run as an idle handler from the GLib main loop. If the
+        freedesktop notification service is available, this executes the
+        abstract :meth:`run` method. Otherwise, provided we haven't yet timed
+        out, it schedules a future retry.
+        """
         try:
             self.notifier = Notifications()
         except DBusException as err:
@@ -89,12 +145,8 @@ class NotifierApplication:
                 'org.freedesktop.DBus.Error.ServiceUnknown',
             ):
                 if monotonic - self._run_start > 60:
-                    # We've waited a full minute for the notification service
-                    # to show up; bail with the exception
                     raise
                 else:
-                    # Wait a while and re-run the idle handler (True return
-                    # indicates re-run requested)
                     sleep(1)
                     return True
             else:
@@ -103,11 +155,23 @@ class NotifierApplication:
         self.run()
         return False
 
+    @abstractmethod
     def run(self):
+        """
+        This abstract method should be overridden in descendents to provide the
+        main logic of the application.
+        """
         raise NotImplementedError()
 
 
 class ResetApplication(NotifierApplication):
+    """
+    Checks the Raspberry Pi 5's power status and reports, via the freedesktop
+    notification mechanism, if the last reset occurred due to a brownout
+    (undervolt) situation, or if the current power supply failed to negotiate a
+    5A supply. This script is intended to be run from a systemd user slice as
+    part of the :file:`graphical-session.target`.
+    """
     APP_ID = 'com.canonical.pemmican.ResetGui'
 
     def __init__(self):
@@ -120,10 +184,22 @@ class ResetApplication(NotifierApplication):
         self.do_check()
 
     def do_notification_closed(self, msg_id, reason):
+        """
+        Callback executed when the user dismisses a notification by any
+        mechanism (explicit close, timeout, action activation, etc). As a
+        oneshot application, this handler simply exits if we have no
+        notifications left pending.
+        """
         if not self.notifier.pending:
             self.main_loop.quit()
 
     def do_notification_action(self, msg_id, action_key):
+        """
+        Callback executed when the user activates an action on one of our
+        pending notifications. This launches the web-browser for the "More
+        information" action, or touches the appropriate file for the "Don't
+        show again" action.
+        """
         if action_key == 'moreinfo':
             webbrowser.open_new_tab(RPI_PSU_URL)
         else: # action_key == 'suppress'
@@ -132,6 +208,12 @@ class ResetApplication(NotifierApplication):
             inhibit_path.touch()
 
     def do_check(self):
+        """
+        This method is the bulk of the :program:`pemmican-reset` application.
+        It runs the checks on the device-tree nodes and, if notifications are
+        required, queries the notification service's capabilities to format the
+        notifications accordingly.
+        """
         try:
             brownout = reset_brownout() and not any(
                 (p / __package__ / BROWNOUT_INHIBIT).exists()
@@ -192,6 +274,13 @@ class ResetApplication(NotifierApplication):
 
 
 class MonitorApplication(NotifierApplication):
+    """
+    Monitors the Raspberry Pi 5's power supply for reports of undervolt
+    (deficient power supply), or overcurrent (excessive draw by USB
+    peripherals). Issues are reported via the freedesktop notification
+    mechanism. This script is intended to be run from a systemd user slice as
+    part of the :file:`graphical-session.target`.
+    """
     APP_ID = 'com.canonical.pemmican.MonitorGui'
 
     def __init__(self):
@@ -230,8 +319,11 @@ class MonitorApplication(NotifierApplication):
             self.undervolt_monitor.start()
 
     def do_usb_device(self, observer, device):
-        for key, value in device.properties.items():
-            print(repr(key), repr(value))
+        """
+        Callback registered for USB device events. This method performs further
+        filtering to determine if this is actually an overcurrent event, and
+        dispatches a notification if it is.
+        """
         try:
             if device.action == 'change':
                 port = device.properties['OVER_CURRENT_PORT']
@@ -248,6 +340,11 @@ class MonitorApplication(NotifierApplication):
                 self.overcurrent_msg_id)
 
     def do_hwmon_device(self, observer, device):
+        """
+        Callback registered for hardware monitoring events. This performs
+        further filtering to determine if this is actually an undervolt event,
+        and dispatches a notification if it is.
+        """
         try:
             if device.action == 'change':
                 name = device.attributes.asstring('name')
@@ -261,6 +358,12 @@ class MonitorApplication(NotifierApplication):
                 self.undervolt_msg_id)
 
     def notify(self, key, msg, replace_id=0):
+        """
+        This method is called by the monitoring callbacks
+        (:meth:`do_usb_device` and :meth:`do_hwmon_device`) to format and
+        dispatch a notification according to the capabilities of the system's
+        notification mechanism.
+        """
         caps = self.notifier.get_capabilities()
         escape = html.escape if 'body-markup' in caps else lambda s: s
         # Customize what we notify based on the notification system's
@@ -288,12 +391,22 @@ class MonitorApplication(NotifierApplication):
             hints={'urgency': 2}, actions=actions, replace_id=replace_id)
 
     def do_notification_closed(self, msg_id, reason):
+        """
+        Callback executed when the user dismisses a notification by any
+        mechanism (explicit close, timeout, action activation, etc).
+        """
         if msg_id == self.undervolt_msg_id:
             self.undervolt_msg_id = 0
         elif msg == self.overcurrent_msg_id:
             self.overcurrent_msg_id = 0
 
     def do_notification_action(self, msg_id, action_key):
+        """
+        Callback executed when the user activates an action on one of our
+        pending notifications. This launches the web-browser for the "More
+        information" action, or touches the appropriate file for the "Don't
+        show again" action.
+        """
         if action_key == 'moreinfo':
             webbrowser.open_new_tab(RPI_PSU_URL)
         else:
