@@ -20,6 +20,7 @@ gi.require_version('Gio', '2.0')
 gi.require_version('GLib', '2.0')
 from gi.repository import Gio, GLib
 from dbus.mainloop.glib import DBusGMainLoop
+from dbus.exceptions import DBusException
 from pyudev import Context, Monitor
 from pyudev.glib import MonitorObserver
 
@@ -144,7 +145,7 @@ class NotifierApplication(ABC):
                 'org.freedesktop.DBus.Error.NameHasNoOwner',
                 'org.freedesktop.DBus.Error.ServiceUnknown',
             ):
-                if monotonic - self._run_start > 60:
+                if monotonic() - self._run_start > 60:
                     raise
                 else:
                     sleep(1)
@@ -304,6 +305,8 @@ class MonitorApplication(NotifierApplication):
             self.main_loop.quit()
             return
 
+        self.notifier.on_closed = self.do_notification_closed
+        self.notifier.on_action = self.do_notification_action
         context = Context()
         if check_overcurrent:
             self.overcurrent_monitor = Monitor.from_netlink(context)
@@ -332,12 +335,12 @@ class MonitorApplication(NotifierApplication):
                 return
         except KeyError:
             return
-        if port and self.overcurrent_counts[port] > count:
+        if port and self.overcurrent_counts.get(port, 0) < count:
             self.overcurrent_counts[port] = count
             self.overcurrent_msg_id = self.notify(
                 'overcurrent',
                 _('USB overcurrent; please check your connected USB devices'),
-                self.overcurrent_msg_id)
+                replaces_id=self.overcurrent_msg_id)
 
     def do_hwmon_device(self, observer, device):
         """
@@ -355,9 +358,9 @@ class MonitorApplication(NotifierApplication):
             self.undervolt_msg_id = self.notify(
                 'undervolt',
                 _('Low voltage warning; please check your power supply'),
-                self.undervolt_msg_id)
+                replaces_id=self.undervolt_msg_id)
 
-    def notify(self, key, msg, replace_id=0):
+    def notify(self, key, msg, *, replaces_id=0):
         """
         This method is called by the monitoring callbacks
         (:meth:`do_usb_device` and :meth:`do_hwmon_device`) to format and
@@ -388,7 +391,7 @@ class MonitorApplication(NotifierApplication):
 
         return self.notifier.notify(
             self.title, body=escape(msg) + ('. ' + suffix if suffix else ''),
-            hints={'urgency': 2}, actions=actions, replace_id=replace_id)
+            hints={'urgency': 2}, actions=actions, replaces_id=replaces_id)
 
     def do_notification_closed(self, msg_id, reason):
         """
