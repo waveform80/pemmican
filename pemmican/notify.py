@@ -118,7 +118,7 @@ class Notifications:
         parameter to :meth:`notify`) that was invoked by the user.
         """
         if msg_id in self._pending:
-            if callable(self.on_action):
+            if self.on_action is not None:
                 self.on_action(msg_id, action_id)
 
     def _notification_closed(self, msg_id, reason):
@@ -135,5 +135,5 @@ class Notifications:
         except KeyError:
             pass
         else:
-            if callable(self.on_closed):
+            if self.on_closed is not None:
                 self.on_closed(msg_id, reason)
