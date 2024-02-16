@@ -8,10 +8,7 @@ base class, :class:`NotifierApplication` containing the logic common to both.
 import os
 import sys
 import html
-import locale
-import gettext
 import webbrowser
-from importlib import resources
 from time import monotonic, sleep
 from abc import ABC, abstractmethod
 
@@ -24,6 +21,7 @@ from dbus.exceptions import DBusException
 from pyudev import Context, Monitor
 from pyudev.glib import MonitorObserver
 
+from . import lang
 from .power import reset_brownout, psu_max_current
 from .notify import Notifications
 from .const import (
@@ -35,15 +33,6 @@ from .const import (
     UNDERVOLT_INHIBIT,
     OVERCURRENT_INHIBIT,
 )
-
-
-try:
-    locale.setlocale(locale.LC_ALL, '')
-except locale.Error:
-    locale.setlocale(locale.LC_ALL, 'C')
-    _ = lambda s: s
-else:
-    _ = gettext.gettext
 
 
 class NotifierApplication(ABC):
@@ -108,12 +97,8 @@ class NotifierApplication(ABC):
         self.app = Gio.Application()
         self.app.set_application_id(self.APP_ID)
         self.app.connect('activate', self.do_activate)
-        with resources.as_file(resources.files(__package__)) as pkg_path:
-            locale_path = pkg_path / 'locale'
-            gettext.bindtextdomain(__package__, str(locale_path))
-            gettext.textdomain(__package__)
-
-            self.title = _('Raspberry Pi PMIC Monitor')
+        with lang.init():
+            self.title = lang._('Raspberry Pi PMIC Monitor')
             return self.app.run(sys.argv if args is None else args)
 
     def do_activate(self, user_data):
@@ -236,25 +221,25 @@ class ResetApplication(NotifierApplication):
         # info" URLs onto the notification itself, using hyperlinks if capable
         if 'actions' in caps:
             actions = [
-                ('moreinfo', _('More information')),
-                ('suppress', _("Don't show again")),
+                ('moreinfo', lang._('More information')),
+                ('suppress', lang._("Don't show again")),
             ]
             suffix = ''
         elif 'body-hyperlinks' in caps:
             actions = []
             suffix = (
                 f'<a href="{escape(RPI_PSU_URL)}">' +
-                escape(_("More information")) +
+                escape(lang._("More information")) +
                 '</a>')
         else:
             actions = []
-            suffix = escape(_('See {RPI_PSU_URL} for more information')
+            suffix = escape(lang._('See {RPI_PSU_URL} for more information')
                             .format(RPI_PSU_URL=RPI_PSU_URL))
         # Check for brownout initially. If brownout caused a reset, don't
         # bother double-warning about an inadequate PSU
         if brownout:
             self.inhibit = BROWNOUT_INHIBIT
-            body=escape(_(
+            body=escape(lang._(
                 'Reset due to low power; please check your power supply')) + (
                 '. ' + suffix if suffix else '')
             self.notifier.notify(
@@ -262,7 +247,7 @@ class ResetApplication(NotifierApplication):
                 hints={'urgency': 2}, actions=actions)
         elif max_current:
             self.inhibit = MAX_CURRENT_INHIBIT
-            body=escape(_(
+            body=escape(lang._(
                 'This power supply is not capable of supplying 5A; power '
                 'to peripherals will be restricted')) + (
                 '. ' + suffix if suffix else '')
@@ -339,7 +324,7 @@ class MonitorApplication(NotifierApplication):
             self.overcurrent_counts[port] = count
             self.overcurrent_msg_id = self.notify(
                 'overcurrent',
-                _('USB overcurrent; please check your connected USB devices'),
+                lang._('USB overcurrent; please check your connected USB devices'),
                 replaces_id=self.overcurrent_msg_id)
 
     def do_hwmon_device(self, observer, device):
@@ -357,7 +342,7 @@ class MonitorApplication(NotifierApplication):
         if name == 'rpi_volt' and alarm:
             self.undervolt_msg_id = self.notify(
                 'undervolt',
-                _('Low voltage warning; please check your power supply'),
+                lang._('Low voltage warning; please check your power supply'),
                 replaces_id=self.undervolt_msg_id)
 
     def notify(self, key, msg, *, replaces_id=0):
@@ -374,19 +359,19 @@ class MonitorApplication(NotifierApplication):
         # info" URLs onto the notification itself, using hyperlinks if capable
         if 'actions' in caps:
             actions = [
-                ('moreinfo', _('More information')),
-                (f'suppress_{key}', _("Don't show again")),
+                ('moreinfo', lang._('More information')),
+                (f'suppress_{key}', lang._("Don't show again")),
             ]
             suffix = ''
         elif 'body-hyperlinks' in caps:
             actions = []
             suffix = (
                 f'<a href="{escape(RPI_PSU_URL)}">' +
-                escape(_("More information")) +
+                escape(lang._("More information")) +
                 '</a>')
         else:
             actions = []
-            suffix = escape(_('See {RPI_PSU_URL} for more information')
+            suffix = escape(lang._('See {RPI_PSU_URL} for more information')
                             .format(RPI_PSU_URL=RPI_PSU_URL))
 
         return self.notifier.notify(
