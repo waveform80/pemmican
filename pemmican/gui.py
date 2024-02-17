@@ -173,11 +173,10 @@ class ResetApplication(NotifierApplication):
         """
         Callback executed when the user dismisses a notification by any
         mechanism (explicit close, timeout, action activation, etc). As a
-        oneshot application, this handler simply exits if we have no
-        notifications left pending.
+        oneshot application, which can only ever show one notification, we
+        just quit if it's closed.
         """
-        if not self.notifier.pending:
-            self.main_loop.quit()
+        self.main_loop.quit()
 
     def do_notification_action(self, msg_id, action_key):
         """
@@ -245,7 +244,7 @@ class ResetApplication(NotifierApplication):
             self.notifier.notify(
                 self.title, body=body,
                 hints={'urgency': 2}, actions=actions)
-        elif max_current:
+        else: # max_current
             self.inhibit = MAX_CURRENT_INHIBIT
             body=escape(lang._(
                 'This power supply is not capable of supplying 5A; power '
@@ -254,7 +253,7 @@ class ResetApplication(NotifierApplication):
             self.notifier.notify(
                 self.title, body=body,
                 hints={'urgency': 1}, actions=actions)
-        # If we didn't show any notifications, just exit immediately
+        # If nothing is pending (already!), just exit immediately
         if not self.notifier.pending:
             self.main_loop.quit()
 
@@ -337,6 +336,8 @@ class MonitorApplication(NotifierApplication):
             if device.action == 'change':
                 name = device.attributes.asstring('name')
                 alarm = device.attributes.asint('in0_lcrit_alarm')
+            else:
+                return
         except KeyError:
             return
         if name == 'rpi_volt' and alarm:

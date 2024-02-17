@@ -93,7 +93,8 @@ class Notifications:
         msg_id = self._intf.Notify(
             app_name, replaces_id, app_icon, summary, body, actions, hints,
             timeout)
-        self._pending.add(msg_id)
+        if msg_id:
+            self._pending.add(msg_id)
         return msg_id
 
     def remove(self, msg_id):

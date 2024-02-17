@@ -4,17 +4,6 @@ from unittest import mock
 from pemmican.notify import Notifications
 
 
-@pytest.fixture()
-def dbus(request):
-    with mock.patch('pemmican.notify.dbus') as dbus:
-        yield dbus
-
-
-@pytest.fixture()
-def notify_intf(request, dbus):
-    return dbus.Interface()
-
-
 def test_notifications_init(dbus):
     notifier = Notifications()
     assert notifier.on_closed is None
@@ -74,6 +63,16 @@ def test_notifications_notify(notify_intf):
         ['put-it-out', 'Extinguish!', 'let-it-burn', 'Leave It'],
         {'urgency': 2}, -1)
     assert notify_intf.Notify.call_args.kwargs == {}
+
+
+def test_notifications_not_pending(notify_intf):
+    notifier = Notifications()
+    notify_intf.Notify.return_value = 0
+
+    assert notifier.notify('Foo Info', body='The foo has started') == 0
+    # Ensure we don't set 0 (which is not a valid message ID) as a pending
+    # identity
+    assert notifier.pending == set()
 
 
 def test_notifications_remove(notify_intf):
