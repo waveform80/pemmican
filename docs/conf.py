@@ -106,6 +106,13 @@ epub_show_urls = 'no'
 
 man_pages = [
     (
+        'pemmican-cli',
+        info['name'],
+        'pemmican-cli - Check boot-time PMIC issues',
+        [info['author']],
+        1,
+    ),
+    (
         'pemmican-reset',
         info['name'],
         'pemmican-reset - Check boot-time PMIC issues',
