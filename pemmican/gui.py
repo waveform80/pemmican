@@ -68,25 +68,23 @@ class NotifierApplication(ABC):
     """
     APP_ID = 'com.canonical.pemmican'
 
-    def __init__(self, *, want_display=True):
+    def __init__(self):
         super().__init__()
         self.title = ''
         self.app = None
         self.main_loop = None
         self.notifier = None
-        self._want_display = want_display
         self._run_start = None
 
     def __call__(self, args=None):
-        if self._want_display:
-            # Bail if we don't have DISPLAY or WAYLAND_DISPLAY set in the
-            # environment (which are required to launch the browser on "more
-            # information"); the service will retry us later (when hopefully
-            # they've shown up...)
-            if not os.environ.keys() & {'DISPLAY', 'WAYLAND_DISPLAY'}:
-                print('Missing DISPLAY / WAYLAND_DISPLAY',
-                      file=sys.stderr, flush=True)
-                return 1
+        # Bail if we don't have DISPLAY or WAYLAND_DISPLAY set in the
+        # environment (which are required to launch the browser on "more
+        # information"); the service will retry us later (when hopefully
+        # they've shown up...)
+        if not os.environ.keys() & {'DISPLAY', 'WAYLAND_DISPLAY'}:
+            print('Missing DISPLAY / WAYLAND_DISPLAY',
+                  file=sys.stderr, flush=True)
+            return 1
         # Integrate dbus-python with GLib; the set_as_default parameter means
         # we don't have to pass around the NativeMainLoop object this returns
         # whenever connecting to a bus -- it'll be the default anyway
@@ -386,7 +384,7 @@ class MonitorApplication(NotifierApplication):
         """
         if msg_id == self.undervolt_msg_id:
             self.undervolt_msg_id = 0
-        elif msg == self.overcurrent_msg_id:
+        elif msg_id == self.overcurrent_msg_id:
             self.overcurrent_msg_id = 0
 
     def do_notification_action(self, msg_id, action_key):

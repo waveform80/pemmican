@@ -19,6 +19,18 @@ def test_help(capsys):
     assert capture.out.strip().startswith('usage:')
 
 
+def test_lang_fallback(capsys):
+    import locale
+    with mock.patch('pemmican.lang.locale.setlocale') as setlocale:
+        setlocale.side_effect = [locale.Error, None]
+        with pytest.raises(SystemExit) as err:
+            main(['--version'])
+        assert err.value.code == 0
+        # Ensure we fell back to C locale on initial failure
+        assert setlocale.call_count == 2
+        assert setlocale.call_args.args == (locale.LC_ALL, 'C')
+
+
 def test_regular_operation(capsys):
     with (
         mock.patch('pemmican.cli.reset_brownout') as reset_brownout,
