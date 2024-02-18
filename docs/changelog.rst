@@ -12,7 +12,7 @@ Changelog
 .. currentmodule:: pemmican
 
 
-Release 0.1 (2024-??-??)
+Release 0.1 (2024-02-??)
 ========================
 
 * Initial release
