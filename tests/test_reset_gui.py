@@ -40,8 +40,8 @@ def test_main(main, glib, notify_intf):
 
 def test_missing_display(main, monkeypatch, capsys):
     with monkeypatch.context() as m:
-        m.delenv('DISPLAY')
-        m.delenv('WAYLAND_DISPLAY')
+        m.delenv('DISPLAY', raising=False)
+        m.delenv('WAYLAND_DISPLAY', raising=False)
         assert main() == 1
         capture = capsys.readouterr()
         assert capture.err.strip().startswith('Missing DISPLAY')
