@@ -106,8 +106,8 @@ def test_usb_overcurrent(main, notify_intf):
     main.overcurrent_observer.event('device-event', device)
     assert notify_intf.Notify.call_count == 1
 
-    # Re-send the same event, observe the call-count doesn't change (because
-    # the count hasn't increased)
+    # Re-send the same event, observe the call-count doesn't change because
+    # the notification is still active
     main.overcurrent_observer.event('device-event', device)
     assert notify_intf.Notify.call_count == 1
 
@@ -144,10 +144,10 @@ def test_undervolt(main, notify_intf):
     main.undervolt_observer.event('device-event', device)
     assert notify_intf.Notify.call_count == 1
 
-    # Re-send the same event, observe the call-count changes because we're not
-    # using a count here
+    # Re-send the same event, observe the call-count doesn't change because
+    # the original notification is still active
     main.undervolt_observer.event('device-event', device)
-    assert notify_intf.Notify.call_count == 2
+    assert notify_intf.Notify.call_count == 1
 
 
 def test_not_undervolt(main, notify_intf):

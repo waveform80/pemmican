@@ -317,7 +317,13 @@ class MonitorApplication(NotifierApplication):
                 return
         except KeyError:
             return
-        if port and self.overcurrent_counts.get(port, 0) < count:
+        if (
+            # Only display a notification if there's no active notification
+            # already; this works around an issue in GNOME that replacing a
+            # notification loses its actions
+            self.overcurrent_msg_id == 0 and
+            port and count > self.overcurrent_counts.get(port, 0)
+        ):
             self.overcurrent_counts[port] = count
             self.overcurrent_msg_id = self.notify(
                 'overcurrent',
@@ -338,7 +344,8 @@ class MonitorApplication(NotifierApplication):
                 return
         except KeyError:
             return
-        if name == 'rpi_volt' and alarm:
+        # See note in method above
+        if self.undervolt_msg_id == 0 and name == 'rpi_volt' and alarm:
             self.undervolt_msg_id = self.notify(
                 'undervolt',
                 lang._('Low voltage warning; please check your power supply'),
