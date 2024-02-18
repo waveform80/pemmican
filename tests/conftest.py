@@ -56,13 +56,18 @@ def udev_observer(udev_monitor):
     class MonitorObserver:
         def __init__(self, monitor):
             self.monitor = monitor
-            self.handlers = {}
+            self._handle_id = 0
+            self._handlers = {}
         def connect(self, event, handler):
-            self.handlers[event] = handler
-        def disconnect(self, event):
-            del self.handlers[event]
+            self._handle_id += 1
+            self._handlers[self._handle_id] = (event, handler)
+            return self._handle_id
+        def disconnect(self, handler_id):
+            del self._handlers[handler_id]
         def event(self, event, device):
-            self.handlers[event](self, device)
+            for h_event, handler in self._handlers.values():
+                if h_event == event:
+                    handler(self, device)
     with mock.patch('pemmican.gui.MonitorObserver', MonitorObserver) as observer:
         yield observer
 

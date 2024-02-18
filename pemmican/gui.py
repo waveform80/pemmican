@@ -277,10 +277,12 @@ class MonitorApplication(NotifierApplication):
         super().__init__()
         self.overcurrent_monitor = None
         self.overcurrent_observer = None
+        self.overcurrent_handle = None
         self.overcurrent_msg_id = 0
         self.overcurrent_counts = {}
         self.undervolt_monitor = None
         self.undervolt_observer = None
+        self.undervolt_handle = None
         self.undervolt_msg_id = 0
 
     def run(self):
@@ -301,13 +303,15 @@ class MonitorApplication(NotifierApplication):
             self.overcurrent_monitor = Monitor.from_netlink(context)
             self.overcurrent_monitor.filter_by(subsystem='usb')
             self.overcurrent_observer = MonitorObserver(self.overcurrent_monitor)
-            self.overcurrent_observer.connect('device-event', self.do_usb_device)
+            self.overcurrent_handle = self.overcurrent_observer.connect(
+                'device-event', self.do_usb_device)
             self.overcurrent_monitor.start()
         if check_undervolt:
             self.undervolt_monitor = Monitor.from_netlink(context)
             self.undervolt_monitor.filter_by(subsystem='hwmon')
             self.undervolt_observer = MonitorObserver(self.undervolt_monitor)
-            self.undervolt_observer.connect('device-event', self.do_hwmon_device)
+            self.undervolt_handle = self.undervolt_observer.connect(
+                'device-event', self.do_hwmon_device)
             self.undervolt_monitor.start()
 
     def do_usb_device(self, observer, device):
@@ -408,26 +412,26 @@ class MonitorApplication(NotifierApplication):
         information" action, or touches the appropriate file for the "Don't
         show again" action.
         """
-        if action_key == 'moreinfo':
+        if action_key == 'suppress_undervolt':
+            inhibit = XDG_CONFIG_HOME / __package__ / UNDERVOLT_INHIBIT
+            inhibit.parent.mkdir(parents=True, exist_ok=True)
+            inhibit.touch()
+            self.undervolt_observer.disconnect(self.undervolt_handle)
+            self.undervolt_handle = None
+            self.undervolt_observer = None
+            self.undervolt_monitor = None
+        elif action_key == 'suppress_overcurrent':
+            inhibit = XDG_CONFIG_HOME / __package__ / OVERCURRENT_INHIBIT
+            inhibit.parent.mkdir(parents=True, exist_ok=True)
+            inhibit.touch()
+            self.overcurrent_observer.disconnect(self.overcurrent_handle)
+            self.overcurrent_handle = None
+            self.overcurrent_observer = None
+            self.overcurrent_monitor = None
+        else: # action_key == 'moreinfo'
             webbrowser.open_new_tab(RPI_PSU_URL)
-        else:
-            inhibit_path, monitor_prop, observer_prop = {
-                'suppress_undervolt': (
-                    XDG_CONFIG_HOME / __package__ / UNDERVOLT_INHIBIT,
-                    'undervolt_monitor',
-                    'undervolt_observer'),
-                'suppress_overcurrent': (
-                    XDG_CONFIG_HOME / __package__ / OVERCURRENT_INHIBIT,
-                    'overcurrent_monitor',
-                    'overcurrent_observer'),
-            }[action_key]
-            inhibit_path.parent.mkdir(parents=True, exist_ok=True)
-            inhibit_path.touch()
-            getattr(self, observer_prop).disconnect('device-event')
-            setattr(self, observer_prop, None)
-            setattr(self, monitor_prop, None)
-            if self.undervolt_monitor is None and self.overcurrent_monitor is None:
-                self.main_loop.quit()
+        if self.undervolt_monitor is None and self.overcurrent_monitor is None:
+            self.main_loop.quit()
 
 
 reset_main = ResetApplication()

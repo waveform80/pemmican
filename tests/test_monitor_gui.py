@@ -269,7 +269,7 @@ def test_more_info(main, glib, notify_intf):
         assert glib.MainLoop().quit.call_count == 0
 
 
-def test_inhibit(main, conf_dir, glib, notify_intf):
+def test_inhibit_overcurrent(main, conf_dir, glib, notify_intf):
     notify_intf.Notify.return_value = 1
     notify_intf.GetCapabilities.return_value = ['actions']
     assert main() == 0
@@ -291,6 +291,32 @@ def test_inhibit(main, conf_dir, glib, notify_intf):
     # Close an unrelated message id, just for coverage
     main.do_notification_closed(2, 2)
     assert main.overcurrent_msg_id == 0
+    assert glib.MainLoop().quit.call_count == 0
+
+
+def test_inhibit_undervolt(main, conf_dir, glib, notify_intf):
+    notify_intf.Notify.return_value = 1
+    notify_intf.GetCapabilities.return_value = ['actions']
+    assert main() == 0
+    assert notify_intf.Notify.call_count == 0
+    device = mock.Mock()
+    device.action = 'change'
+    device.attributes.asstring.side_effect = (
+        lambda s: 'rpi_volt' if s == 'name' else 'foo')
+    device.attributes.asint.side_effect = (
+        lambda s: '1' if s == 'in0_lcrit_alarm' else '0')
+    main.undervolt_observer.event('device-event', device)
+    assert notify_intf.Notify.call_count == 1
+    assert main.undervolt_msg_id == 1
+    assert not (conf_dir / 'pemmican' / 'undervolt.inhibit').exists()
+    main.notifier._action_invoked(1, 'suppress_undervolt')
+    assert (conf_dir / 'pemmican' / 'undervolt.inhibit').exists()
+    main.notifier._notification_closed(1, 2)
+    assert main.undervolt_msg_id == 0
+
+    # Close an unrelated message id, just for coverage
+    main.do_notification_closed(2, 2)
+    assert main.undervolt_msg_id == 0
     assert glib.MainLoop().quit.call_count == 0
 
 
