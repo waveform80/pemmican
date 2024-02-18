@@ -63,8 +63,8 @@ touch the file |system/brownout.inhibit|.
 .. warning::
 
     It is strongly recommended that any such notice is heeded, as brownout is
-    very likely to lead to any manner of other, hard to predict or replicate
-    issues, up to and including data corruption.
+    very likely to lead to any manner of other (hard to predict or replicate)
+    issues up to and including data corruption.
 
     Put simply, suppressing this warning is probably a very bad idea!
 
