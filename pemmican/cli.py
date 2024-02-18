@@ -20,6 +20,7 @@ from textwrap import fill
 from . import lang
 from .power import reset_brownout, psu_max_current
 from .const import (
+    XDG_CONFIG_HOME,
     XDG_CONFIG_DIRS,
     RPI_PSU_URL,
     BROWNOUT_INHIBIT,
@@ -51,10 +52,10 @@ def main(args=None):
         try:
             brownout = reset_brownout() and not any(
                 (p / __package__ / BROWNOUT_INHIBIT).exists()
-                for p in XDG_CONFIG_DIRS)
+                for p in [XDG_CONFIG_HOME] + XDG_CONFIG_DIRS)
             max_current = (psu_max_current() < 5000) and not any(
                 (p / __package__ / MAX_CURRENT_INHIBIT).exists()
-                for p in XDG_CONFIG_DIRS)
+                for p in [XDG_CONFIG_HOME] + XDG_CONFIG_DIRS)
         except OSError:
             # We're probably not on a Pi 5; just exit
             return 0

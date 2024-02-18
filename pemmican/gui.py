@@ -207,10 +207,10 @@ class ResetApplication(NotifierApplication):
         try:
             brownout = reset_brownout() and not any(
                 (p / __package__ / BROWNOUT_INHIBIT).exists()
-                for p in XDG_CONFIG_DIRS)
+                for p in [XDG_CONFIG_HOME] + XDG_CONFIG_DIRS)
             max_current = (psu_max_current() < 5000) and not any(
                 (p / __package__ / MAX_CURRENT_INHIBIT).exists()
-                for p in XDG_CONFIG_DIRS)
+                for p in [XDG_CONFIG_HOME] + XDG_CONFIG_DIRS)
         except OSError:
             # We're probably not on a Pi 5; just exit
             brownout = max_current = False
@@ -288,10 +288,10 @@ class MonitorApplication(NotifierApplication):
     def run(self):
         check_undervolt = not any(
             (p / __package__ / UNDERVOLT_INHIBIT).exists()
-            for p in XDG_CONFIG_DIRS)
+            for p in [XDG_CONFIG_HOME] + XDG_CONFIG_DIRS)
         check_overcurrent = not any(
             (p / __package__ / OVERCURRENT_INHIBIT).exists()
-            for p in XDG_CONFIG_DIRS)
+            for p in [XDG_CONFIG_HOME] + XDG_CONFIG_DIRS)
         if not check_undervolt and not check_overcurrent:
             self.main_loop.quit()
             return
