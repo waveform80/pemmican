@@ -158,8 +158,8 @@ $(DIST_WHEEL): $(PY_SOURCES) $(SUBDIRS)
 release:
 	$(MAKE) clean
 	test -z "$(shell git status --porcelain)"
-	git tag -s release-$(VER) -m "Release $(VER)"
-	git push origin release-$(VER)
+	git tag -s v$(VER) -m "Release $(VER)"
+	git push origin v$(VER)
 
 upload: $(DIST_TAR) $(DIST_WHEEL)
 	$(TWINE) check $(DIST_TAR) $(DIST_WHEEL)
