@@ -45,7 +45,7 @@ def test_regular_operation(capsys):
     ):
         reset_brownout.return_value = False
         psu_max_current.return_value = 5000
-        assert main() == 0
+        assert main([]) == 0
         capture = capsys.readouterr()
         assert capture.out.strip() == ''
 
@@ -57,7 +57,7 @@ def test_non_pi_operation(capsys):
     ):
         reset_brownout.side_effect = FileNotFoundError('no such file or directory')
         psu_max_current.return_value = 5000
-        assert main() == 0
+        assert main([]) == 0
         capture = capsys.readouterr()
         assert capture.out.strip() == ''
 
@@ -69,7 +69,7 @@ def test_brownout(capsys):
     ):
         reset_brownout.return_value = True
         psu_max_current.return_value = 3000
-        assert main() == 0
+        assert main([]) == 0
         capture = capsys.readouterr()
         out = capture.out.strip()
         assert out.startswith('Reset due to low power')
@@ -87,7 +87,7 @@ def test_max_current(capsys):
     ):
         reset_brownout.return_value = False
         psu_max_current.return_value = 3000
-        assert main() == 0
+        assert main([]) == 0
         capture = capsys.readouterr()
         out = capture.out.strip()
         assert out.startswith('This power supply is not capable')
