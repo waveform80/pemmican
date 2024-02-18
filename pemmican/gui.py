@@ -397,14 +397,23 @@ class MonitorApplication(NotifierApplication):
         if action_key == 'moreinfo':
             webbrowser.open_new_tab(RPI_PSU_URL)
         else:
-            inhibit_path = XDG_CONFIG_HOME / __package__ / {
-                'suppress_undervolt': UNDERVOLT_INHIBIT,
-                'suppress_overcurrent': OVERCURRENT_INHIBIT,
+            inhibit_path, monitor_prop, observer_prop = {
+                'suppress_undervolt': (
+                    XDG_CONFIG_HOME / __package__ / UNDERVOLT_INHIBIT,
+                    'undervolt_monitor',
+                    'undervolt_observer'),
+                'suppress_overcurrent': (
+                    XDG_CONFIG_HOME / __package__ / OVERCURRENT_INHIBIT,
+                    'overcurrent_monitor',
+                    'overcurrent_observer'),
             }[action_key]
             inhibit_path.parent.mkdir(parents=True, exist_ok=True)
             inhibit_path.touch()
-            # TODO: Stop the corresponding monitor and terminate if both
-            # are now inhibited
+            getattr(self, observer_prop).disconnect('device-event')
+            setattr(self, observer_prop, None)
+            setattr(self, monitor_prop, None)
+            if self.undervolt_monitor is None and self.overcurrent_monitor is None:
+                self.main_loop.quit()
 
 
 reset_main = ResetApplication()

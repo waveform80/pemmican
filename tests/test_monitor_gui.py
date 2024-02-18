@@ -239,7 +239,7 @@ def test_undervolt_actions(main, notify_intf):
         {'urgency': 2}, -1)
 
 
-def test_more_info(main, notify_intf):
+def test_more_info(main, glib, notify_intf):
     with mock.patch('pemmican.gui.webbrowser') as webbrowser:
         notify_intf.Notify.return_value = 1
         notify_intf.GetCapabilities.return_value = ['actions']
@@ -259,9 +259,10 @@ def test_more_info(main, notify_intf):
         assert webbrowser.open_new_tab.call_args.args == (RPI_PSU_URL,)
         main.notifier._notification_closed(1, 2)
         assert main.undervolt_msg_id == 0
+        assert glib.MainLoop().quit.call_count == 0
 
 
-def test_inhibit(main, conf_dir, notify_intf):
+def test_inhibit(main, conf_dir, glib, notify_intf):
     notify_intf.Notify.return_value = 1
     notify_intf.GetCapabilities.return_value = ['actions']
     assert main() == 0
@@ -283,3 +284,29 @@ def test_inhibit(main, conf_dir, notify_intf):
     # Close an unrelated message id, just for coverage
     main.do_notification_closed(2, 2)
     assert main.overcurrent_msg_id == 0
+    assert glib.MainLoop().quit.call_count == 0
+
+
+def test_inhibit_quits(main, conf_dir, glib, notify_intf):
+    # Pre-inhibit the undervolt warning
+    (conf_dir / 'pemmican').mkdir()
+    (conf_dir / 'pemmican' / 'undervolt.inhibit').touch()
+    notify_intf.Notify.return_value = 1
+    notify_intf.GetCapabilities.return_value = ['actions']
+    assert main() == 0
+    assert notify_intf.Notify.call_count == 0
+    device = mock.Mock()
+    device.action = 'change'
+    device.properties = {}
+    device.properties['OVER_CURRENT_PORT'] = '4-2-port1'
+    device.properties['OVER_CURRENT_COUNT'] = 1
+    main.overcurrent_observer.event('device-event', device)
+    assert notify_intf.Notify.call_count == 1
+    assert main.overcurrent_msg_id == 1
+    assert not (conf_dir / 'pemmican' / 'overcurrent.inhibit').exists()
+    main.notifier._action_invoked(1, 'suppress_overcurrent')
+    assert (conf_dir / 'pemmican' / 'overcurrent.inhibit').exists()
+    main.notifier._notification_closed(1, 2)
+    assert main.overcurrent_msg_id == 0
+    # Because both are now inhibited, check quit was called
+    assert glib.MainLoop().quit.call_count == 1
