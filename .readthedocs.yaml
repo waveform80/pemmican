@@ -8,6 +8,7 @@ python:
       path: .
       extra_requirements:
         - doc
+        - gui
 
 build:
   os: ubuntu-22.04
