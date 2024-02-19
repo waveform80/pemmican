@@ -29,8 +29,10 @@ environment:
 
 .. code-block:: console
 
-    $ sudo apt install build-essential git virtualenvwrapper \
-        python3-gi libglib2.0-dev libdbus-1-dev
+    $ sudo apt install build-essential git virtualenvwrapper
+    $ sudo apt build-dep python3-gi
+    $ sudo apt build-dep python3-dbus
+    $ sudo apt build-dep python3-pyudev
 
 After installing ``virtualenvwrapper`` you'll need to restart your shell before
 commands like :command:`mkvirtualenv` will operate correctly. Once you've
@@ -122,12 +124,11 @@ into the `Dead Snakes PPA`_ in order to install old/new versions of Python; the
 tox setup *should* work with the version of tox shipped with Ubuntu Focal, but
 more features (like parallel test execution) are available with later versions.
 
-For example, to execute the test suite under tox, skipping interpreter versions
-which are not installed:
+For example, to execute the test suite under tox:
 
 .. code-block:: console
 
-    $ tox -s
+    $ tox
 
 To execute the test suite under all installed interpreter versions in parallel,
 using as many parallel tasks as there are CPUs, then displaying a combined
@@ -135,8 +136,8 @@ report of coverage from all environments:
 
 .. code-block:: console
 
-    $ tox -p auto -s
-    $ coverage combine .coverage.py*
+    $ tox -p auto
+    $ coverage combine
     $ coverage report
 
 
