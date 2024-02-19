@@ -30,7 +30,7 @@ environment:
 .. code-block:: console
 
     $ sudo apt install build-essential git virtualenvwrapper \
-        libglib2.0-dev libdbus-1-dev
+        python3-gi libglib2.0-dev libdbus-1-dev
 
 After installing ``virtualenvwrapper`` you'll need to restart your shell before
 commands like :command:`mkvirtualenv` will operate correctly. Once you've

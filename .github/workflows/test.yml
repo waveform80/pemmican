@@ -35,11 +35,12 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Checkout structa
+      - name: Checkout pemmican
         uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
+          sudo apt install python3-gi libglib2.0-dev libdbus-1-dev
           make develop
 
       - name: Run tests
