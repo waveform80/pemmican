@@ -40,10 +40,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt install python3-gi libglib2.0-dev libdbus-1-dev
+          sudo apt install python3-setuptools python3-gi libglib2.0-dev libdbus-1-dev
+          make develop
           pip install vext
           pip install vext.gi
-          make develop
 
       - name: Run tests
         run: |
