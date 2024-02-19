@@ -40,10 +40,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt install python3-setuptools python3-gi libglib2.0-dev libdbus-1-dev
+          sudo apt install python3-gi libglib2.0-dev libdbus-1-dev
           make develop
-          pip install vext
-          pip install vext.gi
+          # Manually link gi to the site-packages for the current interpreter
+          SITE_PACKAGES=$(python3 -c 'import site; print(site.getsitepackages()[0])')
+          sudo ln -s /usr/lib/python3/dist-packages/gi $SITE_PACKAGES/
 
       - name: Run tests
         run: |
