@@ -1,8 +1,8 @@
 [Unit]
 Description=Check the Raspberry Pi PMIC for power supply issues
 ConditionPathExists=/proc/device-tree/chosen/power
-ConditionPathExists=|!%E/pemmican/overcurrent_warning.inhibit
-ConditionPathExists=|!%E/pemmican/undervolt_warning.inhibit
+ConditionPathExists=|!%E/pemmican/overcurrent.inhibit
+ConditionPathExists=|!%E/pemmican/undervolt.inhibit
 Requires=dbus.socket
 After=dbus.socket
 
