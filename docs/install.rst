@@ -66,7 +66,7 @@ For the console application (:program:`pemmican-cli`) the following
 :manpage:`update-motd(5)` script is recommended:
 
 .. code-block:: bash
-    :caption: /etc/update-motd.d/97-pemmican
+    :caption: /etc/update-motd.d/90-pemmican
 
     #!/bin/sh
 
