@@ -41,6 +41,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt install python3-gi libglib2.0-dev libdbus-1-dev
+          pip install vext
           pip install vext.gi
           make develop
 
