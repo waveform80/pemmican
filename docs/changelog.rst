@@ -12,6 +12,13 @@ Changelog
 .. currentmodule:: pemmican
 
 
+Release 1.0.1 (2024-02-20)
+==========================
+
+* Mostly documentation changes (PyPI installation, development installation,
+  and minor corrections)
+
+
 Release 1.0 (2024-02-19)
 ========================
 
