@@ -55,8 +55,7 @@ class NotifierApplication(ABC):
     (:envvar:`XDG_CONFIG_HOME` and :envvar:`XDG_CONFIG_DIRS`) are expected in
     the environment.
 
-    Furthermore, if *want_display* is :data:`True` (which it is by default),
-    the application will terminate early with a non-zero exit code if
+    The application will terminate early with a non-zero exit code if
     :envvar:`DISPLAY` or :envvar:`WAYLAND_DISPLAY` are missing from the
     environment. Finally, if the freedesktop notification service does not show
     up within 1 minute of the application starting, the application will also
