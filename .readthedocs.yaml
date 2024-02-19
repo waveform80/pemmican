@@ -12,9 +12,11 @@ python:
 build:
   os: ubuntu-22.04
   tools:
-    python: "3.10"
+    python: "3.12"
   apt_packages:
-    - python3-gi
-    - python3-dbus
-    - python3-pyudev
-    - python3-setuptools
+    - libcairo2-dev
+    - libffi-dev
+    - libgirepository1.0-dev
+    - libglib2.0-dev
+    - libdbus-1-dev
+    - python3-cairo-dev
