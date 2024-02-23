@@ -3,7 +3,7 @@
 # Copyright (c) 2024 Dave Jones <dave.jones@canonical.com>
 # Copyright (c) 2024 Canonical Ltd.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0
 
 import struct
 from unittest import mock

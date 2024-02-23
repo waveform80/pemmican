@@ -6,7 +6,7 @@
 # Copyright (c) 2024 Dave Jones <dave.jones@canonical.com>
 # Copyright (c) 2024 Canonical Ltd.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0
 
 # pemmican: Notify users of Raspberry Pi PMIC (power management IC) issues
 
