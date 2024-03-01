@@ -101,9 +101,10 @@ class NotifierApplication(ABC):
         self.app = Gio.Application()
         self.app.set_application_id(self.APP_ID)
         self.app.connect('activate', self.do_activate)
-        with lang.init():
-            self.title = lang._('Raspberry Pi PMIC Monitor')
-            return self.app.run(sys.argv if args is None else args)
+
+        lang.init()
+        self.title = lang._('Raspberry Pi PMIC Monitor')
+        return self.app.run(sys.argv if args is None else args)
 
     def do_activate(self, user_data):
         """

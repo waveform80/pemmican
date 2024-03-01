@@ -40,17 +40,21 @@ SUBDIRS:=
 DIST_WHEEL=dist/$(WHEEL_NAME)-$(VER)-py3-none-any.whl
 DIST_TAR=dist/$(NAME)-$(VER).tar.gz
 DIST_ZIP=dist/$(NAME)-$(VER).zip
-POT_FILE=$(WHEEL_NAME)/locale/$(NAME).pot
-PO_FILES:=$(wildcard $(WHEEL_NAME)/locale/*.po)
-MO_FILES:=$(patsubst $(WHEEL_NAME)/locale/%.po,$(WHEEL_NAME)/locale/%/LC_MESSAGES/$(NAME).mo,$(PO_FILES))
-#MAN_PAGES=man/pemmican.1
+POT_FILE=po/$(NAME).pot
+PO_FILES:=$(wildcard po/*.po)
+MO_FILES:=$(patsubst po/%.po,po/mo/%/LC_MESSAGES/$(NAME).mo,$(PO_FILES))
+MAN_PAGES=\
+	man/pemmican-cli.1 \
+	man/pemmican-mon.1 \
+	man/pemmican-reset.1
 
 
 # Default target
 all:
 	@echo "make install - Install on local system"
 	@echo "make develop - Install symlinks for development"
-	@echo "make i18n - Update translation files"
+	@echo "make pot - Update translation template"
+	@echo "make mo - Update translation files"
 	@echo "make test - Run tests"
 	@echo "make doc - Generate HTML and PDF documentation"
 	@echo "make source - Create source package"
@@ -85,7 +89,9 @@ tar: $(DIST_TAR)
 
 dist: $(DIST_WHEEL) $(DIST_TAR) $(DIST_ZIP)
 
-i18n: $(MO_FILES) $(PO_FILES) $(POT_FILE)
+pot: $(POT_FILE)
+
+mo: $(MO_FILES)
 
 develop:
 	@# These have to be done separately to avoid a cockup...
@@ -137,14 +143,14 @@ $(MAN_PAGES): $(DOC_SOURCES)
 	cp build/man/*.[0-9] man/
 
 $(POT_FILE): $(PY_SOURCES)
-	$(XGETTEXT) -cI18N -o $@ $(filter %.py,$^) $(filter %.ui,$^)
+	$(XGETTEXT) -o $@ $(filter %.py,$^) $(filter %.ui,$^)
 
-$(PO_FILES): $(POT_FILE)
+po/%.po: $(POT_FILE)
 	$(MSGMERGE) -U $@ $<
 
-$(MO_FILES): $(PO_FILES)
+po/mo/%/LC_MESSAGES/$(NAME).mo: po/%.po
 	mkdir -p $(dir $@)
-	$(MSGFMT) $(patsubst $(WHEEL_NAME)/locale/%/LC_MESSAGES/$(NAME).mo,$(WHEEL_NAME)/locale/%.po,$@) -o $@
+	$(MSGFMT) $< -o $@
 
 $(DIST_TAR): $(PY_SOURCES) $(SUBDIRS)
 	$(PYTHON) $(PYFLAGS) setup.py sdist --formats gztar
