@@ -12,7 +12,7 @@ Changelog
 .. currentmodule:: pemmican
 
 
-Release 1.0.3 (2024-03-01)
+Release 1.0.3 (2024-03-08)
 ==========================
 
 * Moved translation stuff into the standard locations
