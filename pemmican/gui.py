@@ -247,7 +247,7 @@ class ResetApplication(NotifierApplication):
                 'Reset due to low power; please check your power supply')) + (
                 '. ' + suffix if suffix else '')
             self.notifier.notify(
-                self.title, body=body,
+                lang._('Power failure'), body=body, app_name=self.title,
                 hints={'urgency': 2}, actions=actions)
         else: # max_current
             self.inhibit = MAX_CURRENT_INHIBIT
@@ -256,7 +256,7 @@ class ResetApplication(NotifierApplication):
                 'to peripherals will be restricted')) + (
                 '. ' + suffix if suffix else '')
             self.notifier.notify(
-                self.title, body=body,
+                lang._('Limited supply'), body=body, app_name=self.title,
                 hints={'urgency': 1}, actions=actions)
         # If nothing is pending (already!), just exit immediately
         if not self.notifier.pending:
@@ -339,7 +339,7 @@ class MonitorApplication(NotifierApplication):
             self.overcurrent_msg_id = self.notify(
                 'overcurrent',
                 lang._('USB overcurrent; please check your connected USB devices'),
-                replaces_id=self.overcurrent_msg_id)
+                app_name=self.title, replaces_id=self.overcurrent_msg_id)
 
     def do_hwmon_device(self, observer, device):
         """
@@ -358,9 +358,9 @@ class MonitorApplication(NotifierApplication):
         # See note in method above
         if self.undervolt_msg_id == 0 and name == 'rpi_volt' and alarm:
             self.undervolt_msg_id = self.notify(
-                'undervolt',
+                lang._('Undervolt'),
                 lang._('Low voltage warning; please check your power supply'),
-                replaces_id=self.undervolt_msg_id)
+                app_name=self.title, replaces_id=self.undervolt_msg_id)
 
     def notify(self, key, msg, *, replaces_id=0):
         """
@@ -393,7 +393,8 @@ class MonitorApplication(NotifierApplication):
 
         return self.notifier.notify(
             self.title, body=escape(msg) + ('. ' + suffix if suffix else ''),
-            hints={'urgency': 2}, actions=actions, replaces_id=replaces_id)
+            app_name=self.title, hints={'urgency': 2}, actions=actions,
+            replaces_id=replaces_id)
 
     def do_notification_closed(self, msg_id, reason):
         """
