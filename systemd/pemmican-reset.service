@@ -3,6 +3,9 @@ Description=Check the Raspberry Pi PMIC for reset notifications
 ConditionPathExists=/proc/device-tree/chosen/power
 ConditionPathExists=|!%E/pemmican/brownout.inhibit
 ConditionPathExists=|!%E/pemmican/max_current.inhibit
+ConditionUser=!root
+ConditionUser=!gnome-initial-setup
+ConditionUser=!gdm-greeter
 Requires=dbus.socket
 After=dbus.socket
 
