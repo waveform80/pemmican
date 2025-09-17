@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools >= 68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pemmican"
+version = "1.0.3"
+description = "Notify users of Raspberry Pi 5 power issues"
+authors = [
+    {name = "Dave Jones", email = "dave.jones@canonical.com"},
+]
+readme = "README.rst"
+requires-python = ">=3.9"
+license = "GPL-3.0"
+keywords = ["raspberry", "pi", "pmic", "notify"]
+
+[project.urls]
+documentation = "https://pemmican.readthedocs.io/"
+source = "https://github.com/waveform80/pemmican"
+issues = "https://github.com/waveform80/pemmican/issues"
+
+[project.optional-dependencies]
+gui = ["dbus-python", "pyudev", "pygobject"]
+test = ["pytest", "pytest-cov"]
+doc = ["sphinx", "sphinx-rtd-theme"]
+
+[project.scripts]
+pemmican-reset = "pemmican.gui:reset_main"
+pemmican-mon = "pemmican.gui:monitor_main"
+pemmican-cli = "pemmican.cli:main"
+
+[tool.setuptools]
+packages = ["pemmican"]
+
+[tool.pytest.ini_options]
+addopts = "-rsx --cov --tb=short"
+testpaths = "tests"
+filterwarnings = [
+    "ignore:GObject\\.SIGNAL_RUN_LAST is deprecated:DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["pemmican"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "raise NotImplementedError",
+    "assert False",
+]
+
+[tool.copyrights]
+include = ["**/*.py", "**/*.rst"]
+exclude = ["docs/examples/*.py", "docs/license.rst"]
+additional = ["Canonical Ltd."]
+license = "LICENSE.txt"
+preamble = "pemmican: notifies users of Raspberry Pi 5 power issues"
+strip_preamble = false
+
+[tool.previewer]
+command = "make -C docs html"
+html = "build/html"
+watch = [
+    "pemmican/*.py",
+    "docs/*.rst",
+    "README.rst",
+]
